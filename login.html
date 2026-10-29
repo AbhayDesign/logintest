@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in</title>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --text: #17171a;
+    --muted: #6b6b73;
+    --line: #dcdcd6;
+    --accent: #2b2bd9;
+    --error: #b3261e;
+    --ok: #1b6e3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416;
+      --surface: #1c1c20;
+      --text: #f0f0ee;
+      --muted: #9a9aa3;
+      --line: #34343a;
+      --accent: #8c8cff;
+      --error: #ff8a80;
+      --ok: #7fd9a0;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  main { width: 100%; max-width: 380px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; font-weight: 600; letter-spacing: -0.01em; }
+  p.lead { margin: 0 0 24px; color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 20px; }
+  .tabs button { border: 0; background: transparent; color: var(--muted); padding: 8px; border-radius: 7px; font: inherit; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+  label { display: block; font-size: 14px; margin: 0 0 6px; }
+  input {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;
+  }
+  input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .primary {
+    width: 100%; border: 0; border-radius: 8px; padding: 11px 14px; font: inherit; font-weight: 600;
+    background: var(--accent); color: #fff; cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) { .primary { color: #10101a; } }
+  .primary:disabled { opacity: .6; cursor: progress; }
+  .link { background: none; border: 0; padding: 0; font: inherit; font-size: 14px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+  .row { display: flex; justify-content: center; margin-top: 16px; }
+  .msg { min-height: 1.4em; margin: 0 0 12px; font-size: 14px; }
+  .msg.error { color: var(--error); }
+  .msg.ok { color: var(--ok); }
+  [hidden] { display: none !important; }
+
+  /* Protected area */
+  #app { max-width: 720px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .bar span { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .bar button { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  .item { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+  .item h2 { margin: 0 0 6px; font-size: 18px; }
+  .item p { margin: 0; color: var(--muted); }
+  @media (prefers-reduced-motion: no-preference) { .primary { transition: opacity .15s; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<main id="auth" hidden>
+  <h1 id="auth-title">Sign in</h1>
+  <p class="lead" id="auth-lead">Enter your details to view the private content.</p>
+
+  <div class="card">
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" id="tab-login" aria-selected="true" type="button">Log in</button>
+      <button role="tab" id="tab-signup" aria-selected="false" type="button">Sign up</button>
+    </div>
+
+    <!-- Login / signup form -->
+    <div id="form-main">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" required>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" minlength="8" required>
+
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      <button class="primary" id="submit" type="button">Log in</button>
+
+      <div class="row"><button class="link" id="forgot" type="button">Forgot your password?</button></div>
+    </div>
+
+    <!-- New password form (shown after clicking a reset link) -->
+    <div id="form-reset" hidden>
+      <label for="new-password">New password</label>
+      <input id="new-password" type="password" autocomplete="new-password" minlength="8" required>
+      <p class="msg" id="msg-reset" role="status" aria-live="polite"></p>
+      <button class="primary" id="save-password" type="button">Save new password</button>
+    </div>
+  </div>
+</main>
+
+<!-- PROTECTED CONTENT -->
+<main id="app" hidden>
+  <div class="bar">
+    <span id="who"></span>
+    <button id="logout" type="button">Log out</button>
+  </div>
+  <div id="content" aria-live="polite">Loading…</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  // 1. Paste your values from Supabase → Project Settings → API
+  const SUPABASE_URL = "https://prolpdztjzomysptdawc.supabase.co/rest/v1";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2xwZHp0anpvbXlzcHRkYXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyMzY1NDIsImV4cCI6MjEwODgxMjU0Mn0.kvW5Cw3HVFa9XGZT2uFpxfqsIE3N6BM2jeoXQooMJe8"; // safe to expose; never use the service_role key here
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  let mode = "login"; // "login" | "signup"
+  let recovering = false;
+
+  function setMode(next) {
+    mode = next;
+    $("tab-login").setAttribute("aria-selected", next === "login");
+    $("tab-signup").setAttribute("aria-selected", next === "signup");
+    $("submit").textContent = next === "login" ? "Log in" : "Create account";
+    $("auth-title").textContent = next === "login" ? "Sign in" : "Create an account";
+    $("password").autocomplete = next === "login" ? "current-password" : "new-password";
+    $("forgot").hidden = next === "signup";
+    say("");
+  }
+
+  function say(text, kind, id = "msg") {
+    const el = $(id);
+    el.textContent = text;
+    el.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  function show(view) {
+    $("auth").hidden = view !== "auth";
+    $("app").hidden = view !== "app";
+  }
+
+  function friendly(error) {
+    const m = (error.message || "").toLowerCase();
+    if (m.includes("invalid login")) return "Email or password is incorrect.";
+    if (m.includes("email not confirmed")) return "Confirm your email first. Check your inbox for the link.";
+    if (m.includes("already registered")) return "An account with this email already exists. Log in instead.";
+    if (m.includes("password should be")) return "Password must be at least 8 characters.";
+    if (m.includes("rate limit")) return "Too many attempts. Wait a minute and try again.";
+    return error.message;
+  }
+
+  async function submit() {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+    if (!email || !password) return say("Enter your email and password.", "error");
+
+    $("submit").disabled = true;
+    say(mode === "login" ? "Logging in…" : "Creating account…");
+
+    try {
+      if (mode === "login") {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // onAuthStateChange takes it from here
+      } else {
+        const { data, error } = await sb.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: location.origin + location.pathname },
+        });
+        if (error) throw error;
+        if (data.session) return; // email confirmation is off: already logged in
+        say("Check your email and click the confirmation link, then log in.", "ok");
+      }
+    } catch (err) {
+      say(friendly(err), "error");
+    } finally {
+      $("submit").disabled = false;
+    }
+  }
+
+  async function forgot() {
+    const email = $("email").value.trim();
+    if (!email) return say("Enter your email above, then click Forgot your password.", "error");
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname,
+    });
+    if (error) return say(friendly(error), "error");
+    say("Reset link sent. Check your email.", "ok");
+  }
+
+  async function saveNewPassword() {
+    const password = $("new-password").value;
+    if (password.length < 8) return say("Password must be at least 8 characters.", "error", "msg-reset");
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) return say(friendly(error), "error", "msg-reset");
+    recovering = false;
+    $("form-reset").hidden = true;
+    $("form-main").hidden = false;
+    const { data } = await sb.auth.getSession();
+    data.session ? enterApp(data.session) : show("auth");
+  }
+
+  // Protected content is fetched from Supabase, not stored in this file.
+  // Row Level Security decides who can read it (see setup steps).
+  async function enterApp(session) {
+    show("app");
+    $("who").textContent = session.user.email;
+    $("content").textContent = "Loading…";
+
+    const { data, error } = await sb
+      .from("private_content")
+      .select("id, title, body")
+      .order("id");
+
+    const box = $("content");
+    box.textContent = "";
+    if (error) {
+      box.textContent = "Couldn't load content: " + error.message;
+      return;
+    }
+    if (!data.length) {
+      box.textContent = "No content yet. Add rows to the private_content table in Supabase.";
+      return;
+    }
+    for (const row of data) {
+      const item = document.createElement("div");
+      item.className = "item";
+      const h = document.createElement("h2");
+      h.textContent = row.title;           // textContent avoids HTML injection
+      const p = document.createElement("p");
+      p.textContent = row.body;
+      item.append(h, p);
+      box.append(item);
+    }
+  }
+
+  // Events
+  $("tab-login").onclick = () => setMode("login");
+  $("tab-signup").onclick = () => setMode("signup");
+  $("submit").onclick = submit;
+  $("forgot").onclick = forgot;
+  $("save-password").onclick = saveNewPassword;
+  $("logout").onclick = () => sb.auth.signOut();
+  for (const id of ["email", "password"]) {
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  }
+  $("new-password").addEventListener("keydown", (e) => { if (e.key === "Enter") saveNewPassword(); });
+
+  // Auth state drives which screen shows
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      recovering = true;
+      show("auth");
+      $("auth-title").textContent = "Set a new password";
+      $("tabs").hidden = true;
+      $("form-main").hidden = true;
+      $("form-reset").hidden = false;
+      return;
+    }
+    if (recovering) return;
+    if (session) {
+      // Defer to avoid calling Supabase inside the auth callback
+      setTimeout(() => enterApp(session), 0);
+    } else {
+      show("auth");
+      $("password").value = "";
+    }
+  });
+
+  // Initial screen: login unless a session already exists
+  sb.auth.getSession().then(({ data }) => {
+    if (!data.session && !recovering) show("auth");
+  });
+  setMode("login");
+</script>
+</body>
+</html>
